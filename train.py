@@ -6,9 +6,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from config import get_args
 from movielens import MovieLens1MDataset
-from dcnv3 import DCNv3
-from deepfm import DeepFM
-from mlp import MLP
+from models.dcnv3 import DCNv3
+from models.deepfm import DeepFM
+from models.mlp import MLP
 from loss import TriBCE_Loss, Weighted_TriBCE_Loss, BCE_Loss, Weighted_BCE_Loss
 import torch.nn as nn
 
@@ -146,4 +146,5 @@ def main():
                 break
 
 if __name__ == '__main__':
+
     main()
