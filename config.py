@@ -38,7 +38,7 @@ def get_args():
     parser.add_argument('--mlp_hidden_layers', type=str, default='64,32', help='Comma-separated hidden layers for MLP (e.g., 128,64,32)')
     
     # Training Hyperparameters
-    parser.add_argument('--epochs', type=int, default=50, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
     parser.add_argument('--early_stop_patience', type=int, default=8, help='Patience for early stopping')
@@ -48,5 +48,6 @@ def get_args():
     parser.add_argument('--topk', type=int, default=5, help='K for recall@K and precision@K')
     
     return parser.parse_args()
+
 
 
