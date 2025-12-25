@@ -9,9 +9,9 @@ from sklearn.model_selection import train_test_split
 from collections import defaultdict
 from config import get_args
 from movielens import MovieLens1MDataset
-from dcnv3 import DCNv3
-from deepfm import DeepFM
-from mlp import MLP
+from models.dcnv3 import DCNv3
+from models.deepfm import DeepFM
+from models.mlp import MLP
 
 def main():
     args = get_args()
@@ -190,4 +190,5 @@ def main():
     plt.savefig(os.path.join(args.output_dir, 'pred_dist.png'))
 
 if __name__ == '__main__':
+
     main()
