@@ -47,3 +47,42 @@ class MovieLens20MDataset(Dataset):
 class MovieLens1MDataset(MovieLens20MDataset):
     def __init__(self, dataset_path):
         super().__init__(dataset_path, sep='::', engine='python', header=None)
+
+class MovieLens1MDatasetWithMetadata(MovieLens1MDataset):
+    def __init__(self, dataset_path, users_path='users.dat', movies_path='movies.dat'):
+        super().__init__(dataset_path)
+        # Load users
+        users_df = pd.read_csv(users_path, sep='::', engine='python', header=None, names=['user_id', 'gender', 'age', 'occupation', 'zip'])
+        users_df['user_id'] -= 1  # Zero-index
+        users_df['age_bin'] = pd.cut(users_df['age'], bins=[0, 18, 25, 35, 45, 50, 56, 100], labels=range(7), right=False)
+        users_df['gender'] = users_df['gender'].map({'M': 0, 'F': 1})
+        self.user_meta = {row['user_id']: (int(row['age_bin']), row['gender'], row['occupation']) for _, row in users_df.iterrows()}
+        
+        # Load movies
+        movies_df = pd.read_csv(movies_path, sep='::', engine='python', header=None, names=['movie_id', 'title', 'genres'])
+        movies_df['movie_id'] -= 1
+        self.genre_list = ['Action', 'Adventure', 'Animation', "Children's", 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+        self.movie_meta = {}
+        for _, row in movies_df.iterrows():
+            g_vec = np.zeros(len(self.genre_list), dtype=np.float32)
+            for g in row['genres'].split('|'):
+                if g in self.genre_list:
+                    g_vec[self.genre_list.index(g)] = 1.0
+            self.movie_meta[row['movie_id']] = g_vec
+        
+        # Update field_dims
+        self.field_dims = np.append(self.field_dims, [7, 2, 21, len(self.genre_list)])  # age_bins, gender, occupation, genres_dim
+
+    def __getitem__(self, index):
+        items, target = super().__getitem__(index)
+        u, i = items
+        user_m = self.user_meta.get(u, (0, 0, 0))  # Default neutral
+        movie_m = self.movie_meta.get(i, np.zeros(len(self.genre_list), dtype=np.float32))
+        return {
+            'user_id': torch.tensor(u, dtype=torch.long),
+            'movie_id': torch.tensor(i, dtype=torch.long),
+            'age_bin': torch.tensor(user_m[0], dtype=torch.long),
+            'gender': torch.tensor(user_m[1], dtype=torch.long),
+            'occupation': torch.tensor(user_m[2], dtype=torch.long),
+            'genres': torch.tensor(movie_m, dtype=torch.float32)
+        }, torch.tensor(target, dtype=torch.float32)
