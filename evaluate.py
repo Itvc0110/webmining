@@ -11,13 +11,18 @@ from movielens import MovieLens1MDataset, MovieLens1MDatasetWithMetadata
 from models.dcnv3 import DCNv3
 from models.deepfm import DeepFM
 from models.mlp import MLP
+
 def main():
     args = get_args()
     device = torch.device(args.device)
     pin_memory = True if device.type == 'cuda' else False
    
-    # Load dataset
-    dataset = MovieLens1MDataset(args.dataset_path)
+    # Dataset
+    if args.model_type == 'dcnv3':
+        dataset = MovieLens1MDatasetWithMetadata(args.dataset_path, args.users_path, args.movies_path)
+    else:
+        dataset = MovieLens1MDataset(args.dataset_path)
+    
     num_users = len(dataset.user_ids())
     num_items = len(dataset.movie_ids())
    
@@ -70,111 +75,107 @@ def main():
     all_targets = []
     with torch.no_grad():
         for batch in test_loader:
-            items, targets = batch
-            user_ids, item_ids = items[:, 0], items[:, 1]
-            targets_np = targets.float().cpu().numpy() # Collect on CPU
-           
             if args.model_type == 'dcnv3':
-                ser_tensor = torch.full((len(candidates),), user, dtype=torch.long, device=device)
-                item_tensor = torch.tensor(candidates, dtype=torch.long, device=device)
-                sparse = torch.stack([user_tensor, item_tensor, age_bin_tensor, gender_tensor, occ_tensor], dim=1)  # Fill defaults
-                dense = torch.zeros(len(candidates), dataset.dense_dim, device=device)  # Zero genres or average
+                sparse, dense, targets = batch
+                sparse = sparse.to(device)
+                dense = dense.to(device)
+                targets = targets.to(device).float()
                 outputs = model(sparse, dense)['y_pred']
             else:
+                items, targets = batch
+                user_ids = items[:, 0].to(device)
+                item_ids = items[:, 1].to(device)
+                targets = targets.to(device).float()
                 outputs = model(user_ids, item_ids)
             preds = outputs.cpu().numpy()
-           
             all_preds.extend(preds)
-            all_targets.extend(targets_np)
-   
+            all_targets.extend(targets.cpu().numpy())
+    
     all_preds = np.array(all_preds)
     all_targets = np.array(all_targets)
-   
+    
     auc_score = roc_auc_score(all_targets, all_preds)
     logloss = log_loss(all_targets, all_preds)
     accuracy = accuracy_score(all_targets, (all_preds > 0.5).astype(int))
-    precision_global = precision_score(all_targets, (all_preds > 0.5).astype(int))
-    recall_global = recall_score(all_targets, (all_preds > 0.5).astype(int))
-    f1 = f1_score(all_targets, (all_preds > 0.5).astype(int))
-    mcc = matthews_corrcoef(all_targets, (all_preds > 0.5).astype(int))
     precision, recall, _ = precision_recall_curve(all_targets, all_preds)
     pr_auc = auc(recall, precision)
     cm = confusion_matrix(all_targets, (all_preds > 0.5).astype(int))
-   
+    prec = precision_score(all_targets, (all_preds > 0.5).astype(int))
+    rec = recall_score(all_targets, (all_preds > 0.5).astype(int))
+    f1 = f1_score(all_targets, (all_preds > 0.5).astype(int))
+    mcc = matthews_corrcoef(all_targets, (all_preds > 0.5).astype(int))
+    
     print(f'AUC: {auc_score:.4f}')
     print(f'Log Loss: {logloss:.4f}')
     print(f'Accuracy: {accuracy:.4f}')
-    print(f'Precision: {precision_global:.4f}')
-    print(f'Recall: {recall_global:.4f}')
+    print(f'PR-AUC: {pr_auc:.4f}')
+    print(f'Precision: {prec:.4f}')
+    print(f'Recall: {rec:.4f}')
     print(f'F1 Score: {f1:.4f}')
     print(f'MCC: {mcc:.4f}')
-    print(f'PR-AUC: {pr_auc:.4f}')
     print('Confusion Matrix:')
     print(cm)
-   
-    # Ranking Metrics (recall@K, precision@K)
+    
+    # Ranking Metrics
     user_train_items = defaultdict(set)
     user_test_pos = defaultdict(set)
-   
+    
     for idx in train_indices:
         u, i = dataset.items[idx]
         user_train_items[u].add(i)
-   
+    
     for idx in test_indices:
         u, i = dataset.items[idx]
         if dataset.targets[idx] == 1:
             user_test_pos[u].add(i)
-   
-    precs = []
-    recs = []
-    hrs = []
-    mrrs = []
-    aps = []
-    ndcgs = []
-   
+    
+    precs, recs, hrs, mrrs, aps, ndcgs = [], [], [], [], [], []
+    
     for user in user_test_pos:
         gt = user_test_pos[user]
-        if len(gt) == 0:
+        if not gt:
             continue
-       
+        
         candidates = [it for it in range(num_items) if it not in user_train_items[user]]
-       
-        if len(candidates) == 0:
+        if not candidates:
             continue
-       
+        
         user_tensor = torch.full((len(candidates),), user, dtype=torch.long, device=device)
         item_tensor = torch.tensor(candidates, dtype=torch.long, device=device)
-       
+        
         with torch.no_grad():
             if args.model_type == 'dcnv3':
-                outputs = model(user_tensor, item_tensor)['y_pred']
+                # For DCNv3, construct sparse and dense for candidates
+                user_m = dataset.user_meta.get(user, (0, 0, 0))
+                age_bin = torch.full((len(candidates),), user_m[0], dtype=torch.long, device=device)
+                gender = torch.full((len(candidates),), user_m[1], dtype=torch.long, device=device)
+                occ = torch.full((len(candidates),), user_m[2], dtype=torch.long, device=device)
+                sparse = torch.stack([user_tensor, item_tensor, age_bin, gender, occ], dim=1)
+                dense = torch.zeros(len(candidates), dataset.dense_dim, device=device)  # Zero genres or average
+                outputs = model(sparse, dense)['y_pred']
             else:
                 outputs = model(user_tensor, item_tensor)
-       
+        
         scores = outputs.cpu().numpy()
         sorted_idx = np.argsort(-scores)
         topk_items = [candidates[j] for j in sorted_idx[:args.topk]]
-       
+        
         hit = len(set(topk_items) & gt)
         prec = hit / min(args.topk, len(candidates))
         rec = hit / len(gt)
-       
         precs.append(prec)
         recs.append(rec)
-       
-        # Hit Rate@K
+        
         hr = 1 if hit > 0 else 0
         hrs.append(hr)
-       
-        # MRR@K
+        
         mrr_val = 0.0
         for rank, item in enumerate(topk_items, 1):
             if item in gt:
                 mrr_val = 1.0 / rank
                 break
         mrrs.append(mrr_val)
-       
-        # MAP@K
+        
         ap = 0.0
         hit_cum = 0
         for rank, item in enumerate(topk_items, 1):
@@ -184,15 +185,14 @@ def main():
         if len(gt) > 0:
             ap /= len(gt)
         aps.append(ap)
-       
-        # NDCG@K
+        
         rel = [1.0 if item in gt else 0.0 for item in topk_items]
-        dcg = sum(ri / np.log2(i + 2) for i, ri in enumerate(rel))  # i from 0, log2(i+2) = log2(2) for i=0 (first position)
+        dcg = sum(ri / np.log2(i + 2) for i, ri in enumerate(rel))
         ideal_rel = sorted(rel, reverse=True)
         idcg = sum(ri / np.log2(i + 2) for i, ri in enumerate(ideal_rel))
         ndcg_val = dcg / idcg if idcg > 0 else 0.0
         ndcgs.append(ndcg_val)
-   
+    
     if precs:
         mean_prec = np.mean(precs)
         mean_rec = np.mean(recs)
@@ -208,11 +208,10 @@ def main():
         print(f'NDCG@{args.topk}: {mean_ndcg:.4f}')
     else:
         print('No users with positive test items.')
-   
-    # Visualizations (keeping existing)
+    
+    # Visualizations
     os.makedirs(args.output_dir, exist_ok=True)
-   
-    # ROC Curve
+    
     from sklearn.metrics import roc_curve
     fpr, tpr, _ = roc_curve(all_targets, all_preds)
     plt.figure()
@@ -222,8 +221,7 @@ def main():
     plt.title('ROC Curve')
     plt.legend()
     plt.savefig(os.path.join(args.output_dir, 'roc_curve.png'))
-   
-    # Precision-Recall Curve
+    
     plt.figure()
     plt.plot(recall, precision, label=f'PR-AUC = {pr_auc:.4f}')
     plt.xlabel('Recall')
@@ -231,8 +229,7 @@ def main():
     plt.title('Precision-Recall Curve')
     plt.legend()
     plt.savefig(os.path.join(args.output_dir, 'pr_curve.png'))
-   
-    # Prediction Distribution
+    
     plt.figure()
     plt.hist(all_preds[all_targets == 0], bins=50, alpha=0.5, label='Negative')
     plt.hist(all_preds[all_targets == 1], bins=50, alpha=0.5, label='Positive')
@@ -241,9 +238,6 @@ def main():
     plt.title('Prediction Distribution')
     plt.legend()
     plt.savefig(os.path.join(args.output_dir, 'pred_dist.png'))
+
 if __name__ == '__main__':
     main()
-
-
-
-
