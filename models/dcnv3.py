@@ -182,7 +182,7 @@ class DCNv3(nn.Module):
         # Dense projection
         self.dense_proj = nn.Linear(dense_dim, embed_dim)
         
-        self.input_dim = len(field_dims) * embed_dim + embed_dim  # sparse + dense proj
+        self.input_dim = len(field_dims) * embed_dim + embed_dim  
         
         self.ECN = ExponentialCrossNetwork(self.input_dim, num_deep_cross_layers, net_dropout=deep_net_dropout, layer_norm=layer_norm, batch_norm=batch_norm).to(self.device)
         self.LCN = LinearCrossNetwork(self.input_dim, num_shallow_cross_layers, net_dropout=shallow_net_dropout, layer_norm=layer_norm, batch_norm=batch_norm).to(self.device)
