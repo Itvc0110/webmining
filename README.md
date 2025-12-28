@@ -70,6 +70,9 @@ All documentation and experiment-related materials that are **not directly invol
 
 The directory includes:
 
+- **Exploratory Data Analysis (`EDA/`)**  
+  A folder containing notebooks and scripts used for analyzing and visualizing the dataset distributions and characteristics.
+
 - **Evaluation Metrics (`metrics_used.md`)**  
   A markdown file describing all evaluation metrics used in the experiments, along with brief explanations and usage contexts.
 
