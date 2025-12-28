@@ -53,9 +53,9 @@ def main():
     # Initialize model
     if args.model_type == 'dcnv3':
         model = DCNv3(
-            num_users=num_users, 
-            num_items=num_items, 
-            embed_dim=args.embed_dim, 
+            field_dims=dataset.field_dims,   
+            dense_dim=dataset.dense_dim,     
+            embed_dim=args.embed_dim,
             num_deep_cross_layers=args.num_deep_cross_layers,
             num_shallow_cross_layers=args.num_shallow_cross_layers,
             deep_net_dropout=args.deep_net_dropout,
@@ -158,5 +158,6 @@ def main():
 if __name__ == '__main__':
 
     main()
+
 
 
