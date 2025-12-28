@@ -170,59 +170,48 @@ class LinearCrossNetwork(nn.Module):
         logit = self.sfc(x)
         return logit.squeeze()  # Changed to squeeze
 
+
 class DCNv3(nn.Module):
-    def __init__(self, num_users, num_items, embed_dim=16, num_deep_cross_layers=2, num_shallow_cross_layers=4, deep_net_dropout=0.1, shallow_net_dropout=0.1, layer_norm=True, batch_norm=True):
+    def __init__(self, field_dims, dense_dim=18, embed_dim=16, num_deep_cross_layers=2, num_shallow_cross_layers=4, deep_net_dropout=0.1, shallow_net_dropout=0.1, layer_norm=True, batch_norm=True):
         super(DCNv3, self).__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        self.user_embedding = nn.Embedding(num_users, embed_dim).to(self.device)
-        self.item_embedding = nn.Embedding(num_items, embed_dim).to(self.device)
-        input_dim = 2 * embed_dim  
+        # Embeddings for sparse fields
+        self.embeddings = nn.ModuleList([nn.Embedding(fd, embed_dim) for fd in field_dims])
         
-        self.ECN = ExponentialCrossNetwork(
-            input_dim=input_dim,
-            num_cross_layers=num_deep_cross_layers,
-            net_dropout=deep_net_dropout,
-            layer_norm=layer_norm,
-            batch_norm=batch_norm
-        ).to(self.device)
+        # Dense projection
+        self.dense_proj = nn.Linear(dense_dim, embed_dim)
         
-        self.LCN = LinearCrossNetwork(
-            input_dim=input_dim,
-            num_cross_layers=num_shallow_cross_layers,
-            net_dropout=shallow_net_dropout,
-            layer_norm=layer_norm,
-            batch_norm=batch_norm
-        ).to(self.device)
+        self.input_dim = len(field_dims) * embed_dim + embed_dim  # sparse + dense proj
+        
+        self.ECN = ExponentialCrossNetwork(self.input_dim, num_deep_cross_layers, net_dropout=deep_net_dropout, layer_norm=layer_norm, batch_norm=batch_norm).to(self.device)
+        self.LCN = LinearCrossNetwork(self.input_dim, num_shallow_cross_layers, net_dropout=shallow_net_dropout, layer_norm=layer_norm, batch_norm=batch_norm).to(self.device)
         
         self.apply(self._init_weights)
-        self.output_activation = torch.sigmoid
+        self.output_activation = nn.sigmoid
 
     def _init_weights(self, module):
-        if isinstance(module, torch.nn.Linear):
-            torch.nn.init.kaiming_uniform_(module.weight, nonlinearity='relu')
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, torch.nn.Embedding):
-            torch.nn.init.xavier_uniform_(module.weight)
+        if isinstance(module, nn.Linear) or isinstance(module, nn.Embedding):
+            nn.init.xavier_uniform_(module.weight)
 
-    def forward(self, user_ids, item_ids):
-        user_ids = user_ids.to(self.device)
-        item_ids = item_ids.to(self.device)
+    def forward(self, sparse, dense):
+        sparse, dense = sparse.to(self.device), dense.to(self.device)
         
-        user_emb = self.user_embedding(user_ids)
-        item_emb = self.item_embedding(item_ids)
-        feature_emb = torch.cat([user_emb, item_emb], dim=-1)
+        # Sparse embeds
+        sparse_embeds = [self.embeddings[i](sparse[:, i]) for i in range(sparse.size(1))]
+        sparse_concat = torch.cat(sparse_embeds, dim=1)
+        
+        # Dense proj
+        dense_emb = self.dense_proj(dense)
+        
+        # Combined
+        feature_emb = torch.cat([sparse_concat, dense_emb], dim=1)
         
         dlogit = self.ECN(feature_emb)
         slogit = self.LCN(feature_emb)
         logit = (dlogit + slogit) * 0.5
-    
+        
         y_pred = self.output_activation(logit)
         y_d = self.output_activation(dlogit)
         y_s = self.output_activation(slogit)
-        return {
-            "y_pred": y_pred,
-            "y_d": y_d,
-            "y_s": y_s
-        }
+        return {"y_pred": y_pred, "y_d": y_d, "y_s": y_s}
