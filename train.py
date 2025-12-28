@@ -23,9 +23,14 @@ def main():
     set_seed(args.seed)
     device = torch.device(args.device)
     pin_memory = True if device.type == 'cuda' else False
+
+    # Dataset
+    if args.model_type == 'dcnv3':
+        dataset = MovieLens1MDatasetWithMetadata(args.dataset_path, args.users_path, args.movies_path)
+    else:
+        dataset = MovieLens1MDataset(args.dataset_path)
     
     # Load dataset
-    dataset = MovieLens1MDataset(args.dataset_path)
     num_users = len(dataset.user_ids())
     num_items = len(dataset.movie_ids())
     
@@ -102,9 +107,14 @@ def main():
             
             optimizer.zero_grad()
             if args.model_type == 'dcnv3':
-                outputs = model(user_ids, item_ids)
+                sparse, dense, targets = batch
+                sparse, dense, targets = sparse.to(device), dense.to(device), targets.to(device).float()
+                outputs = model(sparse, dense)
                 loss = criterion(outputs['y_pred'], targets, outputs['y_d'], outputs['y_s'])
             else:
+                items, targets = batch
+                user_ids, item_ids = items[:, 0].to(device), items[:, 1].to(device)
+                targets = targets.to(device).float()
                 outputs = model(user_ids, item_ids)
                 loss = criterion(outputs, targets)
             loss.backward()
@@ -148,3 +158,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+
