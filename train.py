@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Subset
 import numpy as np
 from sklearn.model_selection import train_test_split
 from config import get_args
-from movielens import MovieLens1MDataset
+from movielens import MovieLens1MDataset, MovieLens1MDatasetWithMetadata
 from models.dcnv3 import DCNv3
 from models.deepfm import DeepFM
 from models.mlp import MLP
@@ -158,4 +158,5 @@ def main():
 if __name__ == '__main__':
 
     main()
+
 
