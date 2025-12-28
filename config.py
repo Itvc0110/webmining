@@ -43,13 +43,14 @@ def get_args():
     parser.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
-    parser.add_argument('--early_stop_patience', type=int, default=8, help='Patience for early stopping')
+    parser.add_argument('--early_stop_patience', type=int, default=20, help='Patience for early stopping')
     
     # Evaluation
     parser.add_argument('--output_dir', type=str, default='./results', help='Directory to save evaluation results and visualizations')
-    parser.add_argument('--topk', type=int, default=5, help='K for recall@K and precision@K')
+    parser.add_argument('--topk', type=int, default=10, help='K for recall@K and precision@K')
     
     return parser.parse_args()
+
 
 
 
