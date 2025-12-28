@@ -27,6 +27,44 @@ After preprocessing, different dataset variants are created depending on the mod
 
 All datasets are **preprocessed and already split into training, validation (dev), and test sets**, enabling direct use for model training and evaluation.
 
+## How to train
+To train a model, run:
+
+```bash
+python train.py \
+  --model_type <model_type> \
+  --dataset_path <ratings_path> \
+  --users_path <users_path> \
+  --movies_path <movies_path> \
+  --checkpoint_path <checkpoint_path> \
+  --lr 0.0005
+```
+Arguments:
+- --model_type: Model architecture to train (mlp/deepfm/dcnv3)
+- --dataset_path: Path to the ratings dataset
+- --users_path: Path to the user metadata (optional for some models)
+- --movies_path: Path to the item metadata (optional for some models)
+- --checkpoint_path: Path to save the trained model
+- --lr: Learning rate
+
+## Evaluating a Model
+After training, evaluate the saved checkpoint using:
+
+```bash
+python evaluate.py \
+  --model_type <model_type> \
+  --dataset_path <ratings_path> \
+  --users_path <users_path> \
+  --movies_path <movies_path> \
+  --checkpoint_path <checkpoint_path> \
+  --output_dir <output_dir> \
+  --topk 10
+```
+Arguments:
+- --checkpoint_path: Path to the trained model checkpoint
+- --output_dir: Directory to save evaluation results
+- --topk: Top-K recommendation setting
+
 ## Documentation
 All documentation and experiment-related materials that are **not directly involved in code execution** are organized in the `docs/` directory.
 
