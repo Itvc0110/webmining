@@ -30,7 +30,6 @@ def main():
     else:
         dataset = MovieLens1MDataset(args.dataset_path)
     
-    # Load dataset
     num_users = len(dataset.user_ids())
     num_items = len(dataset.movie_ids())
     
@@ -45,7 +44,6 @@ def main():
     
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=pin_memory)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=pin_memory)
- 
     
     # Save test indices 
     np.save('test_indices.npy', test_indices)
@@ -101,19 +99,18 @@ def main():
         model.train()
         train_loss = 0
         for batch in train_loader:
-            items, targets = batch
-            user_ids, item_ids = items[:, 0], items[:, 1]
-            targets = targets.to(device).float()
-            
             optimizer.zero_grad()
             if args.model_type == 'dcnv3':
                 sparse, dense, targets = batch
-                sparse, dense, targets = sparse.to(device), dense.to(device), targets.to(device).float()
+                sparse = sparse.to(device)
+                dense = dense.to(device)
+                targets = targets.to(device).float()
                 outputs = model(sparse, dense)
                 loss = criterion(outputs['y_pred'], targets, outputs['y_d'], outputs['y_s'])
             else:
                 items, targets = batch
-                user_ids, item_ids = items[:, 0].to(device), items[:, 1].to(device)
+                user_ids = items[:, 0].to(device)
+                item_ids = items[:, 1].to(device)
                 targets = targets.to(device).float()
                 outputs = model(user_ids, item_ids)
                 loss = criterion(outputs, targets)
@@ -129,14 +126,18 @@ def main():
         val_loss = 0
         with torch.no_grad():
             for batch in val_loader:
-                items, targets = batch
-                user_ids, item_ids = items[:, 0], items[:, 1]
-                targets = targets.to(device).float()
-                
                 if args.model_type == 'dcnv3':
-                    outputs = model(user_ids, item_ids)
+                    sparse, dense, targets = batch
+                    sparse = sparse.to(device)
+                    dense = dense.to(device)
+                    targets = targets.to(device).float()
+                    outputs = model(sparse, dense)
                     loss = criterion(outputs['y_pred'], targets, outputs['y_d'], outputs['y_s'])
                 else:
+                    items, targets = batch
+                    user_ids = items[:, 0].to(device)
+                    item_ids = items[:, 1].to(device)
+                    targets = targets.to(device).float()
                     outputs = model(user_ids, item_ids)
                     loss = criterion(outputs, targets)
                 val_loss += loss.item()
@@ -156,9 +157,4 @@ def main():
                 break
 
 if __name__ == '__main__':
-
     main()
-
-
-
-
