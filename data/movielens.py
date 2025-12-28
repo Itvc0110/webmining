@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+import torch
 
 class MovieLens20MDataset(Dataset):
     def __init__(self, dataset_path, sep=',', engine='c', header='infer'):
