@@ -36,16 +36,12 @@ The directory includes:
   A markdown file describing all evaluation metrics used in the experiments, along with brief explanations and usage contexts.
 
 - **Performance Results (`performance/`)**  
-  A folder storing quantitative results of the evaluated methods, such as:
-  - Performance tables
-  - Comparison results across models
-  - Test set evaluation summaries
+  A folder storing quantitative results of the evaluated methods.
 
 - **Training Progress (`training_progress/`)**      
   A folder containing visualizations generated during training, including:
   - Training loss curves
   - Validation (dev) loss curves
-  - Convergence and overfitting analysis plots
 
 - **Final Experiment Report (`.pdf`)**  
   A single PDF file containing the complete experiment report, including:
@@ -55,5 +51,3 @@ The directory includes:
   - Evaluation metrics
   - Experimental results
   - Hyperparameter settings
-
-This structure ensures a clear separation between executable code and experimental documentation, improving reproducibility and readability.
