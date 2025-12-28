@@ -188,7 +188,7 @@ class DCNv3(nn.Module):
         self.LCN = LinearCrossNetwork(self.input_dim, num_shallow_cross_layers, net_dropout=shallow_net_dropout, layer_norm=layer_norm, batch_norm=batch_norm).to(self.device)
         
         self.apply(self._init_weights)
-        self.output_activation = nn.sigmoid
+        self.output_activation = nn.Sigmoid
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear) or isinstance(module, nn.Embedding):
