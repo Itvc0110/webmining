@@ -103,13 +103,12 @@ class MovieLens1MDatasetWithMetadata(MovieLens1MDataset):
     def __getitem__(self, index):
         items, target = super().__getitem__(index)
         u, i = items
-        user_m = self.user_meta.get(u, (0, 0, 0))
-        movie_m = self.movie_meta.get(i, np.zeros(self.dense_dim, dtype=np.float32))
-        return {
-            'user_id': torch.tensor(u, dtype=torch.long),
-            'movie_id': torch.tensor(i, dtype=torch.long),
-            'age_bin': torch.tensor(user_m[0], dtype=torch.long),
-            'gender': torch.tensor(user_m[1], dtype=torch.long),
-            'occupation': torch.tensor(user_m[2], dtype=torch.long),
-            'genres': torch.tensor(movie_m, dtype=torch.float32)
-        }, torch.tensor(target, dtype=torch.float32)
+        
+        user_m = self.user_meta.get(u, (0, 0, 0))  # age_bin, gender, occupation
+        movie_m = self.movie_meta.get(i, np.zeros(len(self.genre_list), dtype=np.float32))
+        
+        sparse = torch.tensor([u, i, user_m[0], user_m[1], user_m[2]], dtype=torch.long)
+        dense = torch.tensor(movie_m, dtype=torch.float32)
+        target = torch.tensor(target, dtype=torch.float32)
+        
+        return sparse, dense, target
