@@ -3,8 +3,6 @@
 This repository contains the implementation and experimental evaluation for the **Movie Recommandation System**. 
 The goal of this project is to train, evaluate, and compare different data mining / machine learning methods on web-related datasets using standard evaluation metrics.
 
-All **non-executable materials** such as reports, figures, explanations, and experimental results are stored in the `docs/` directory.
-
 ---
 
 ## Group Information
