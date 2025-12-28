@@ -1,8 +1,11 @@
+# train.py - Final version with learning curves + split saving
 import os
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt  # Added for plotting
 from sklearn.model_selection import train_test_split
 from config import get_args
 from movielens import MovieLens1MDataset, MovieLens1MDatasetWithMetadata
@@ -33,7 +36,7 @@ def main():
     num_users = len(dataset.user_ids())
     num_items = len(dataset.movie_ids())
     
-    # Split indices 
+    # Split indices
     indices = np.arange(len(dataset))
     train_indices, temp_indices = train_test_split(indices, test_size=1 - args.train_ratio, random_state=args.seed)
     val_indices, test_indices = train_test_split(temp_indices, test_size=(1 - args.train_ratio - args.val_ratio) / (1 - args.train_ratio), random_state=args.seed)
@@ -45,9 +48,44 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=pin_memory)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=pin_memory)
     
-    # Save test indices 
+    # Save test indices
     np.save('test_indices.npy', test_indices)
     
+    # === SAVE TRAIN/VAL/TEST SPLITS AS CSV (for download) ===
+    # CHANGE THIS PATH IF NOT ON KAGGLE
+    splits_dir = '/kaggle/working/splits'  # Kaggle: writable + downloadable
+    # For local: change to e.g., './splits' or any path you prefer
+    os.makedirs(splits_dir, exist_ok=True)
+
+    def save_split(name, subset_indices):
+        data_list = []
+        for idx in subset_indices:
+            if args.model_type == 'dcnv3':
+                sparse, dense, target = dataset[idx]
+                data_list.append({
+                    'user_id': int(sparse[0]),
+                    'movie_id': int(sparse[1]),
+                    'age_bin': int(sparse[2]),
+                    'gender': int(sparse[3]),
+                    'occupation': int(sparse[4]),
+                    'genres': dense.tolist(),
+                    'rating_binary': float(target)
+                })
+            else:
+                items, target = dataset[idx]
+                data_list.append({
+                    'user_id': int(items[0]),
+                    'movie_id': int(items[1]),
+                    'rating_binary': float(target)
+                })
+        df = pd.DataFrame(data_list)
+        df.to_csv(os.path.join(splits_dir, f'{name}.csv'), index=False)
+        print(f"Saved {len(df)} rows to {name}.csv")
+
+    save_split('train', train_indices)
+    save_split('val', val_indices)
+    save_split('test', test_indices)
+
     # Initialize model
     if args.model_type == 'dcnv3':
         model = DCNv3(
@@ -64,18 +102,18 @@ def main():
     elif args.model_type == 'deepfm':
         hidden_layers = [int(x) for x in args.deepfm_hidden_layers.split(',')]
         model = DeepFM(
-            num_users=num_users, 
-            num_items=num_items, 
-            embed_dim=args.embed_dim, 
+            num_users=num_users,
+            num_items=num_items,
+            embed_dim=args.embed_dim,
             hidden_layers=hidden_layers,
             dropout=args.dropout
         ).to(device)
     elif args.model_type == 'mlp':
         hidden_layers = [int(x) for x in args.mlp_hidden_layers.split(',')]
         model = MLP(
-            num_users=num_users, 
-            num_items=num_items, 
-            embed_dim=args.embed_dim, 
+            num_users=num_users,
+            num_items=num_items,
+            embed_dim=args.embed_dim,
             hidden_layers=hidden_layers,
             dropout=args.dropout
         ).to(device)
@@ -92,9 +130,13 @@ def main():
     
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     
-    # Training loop
+    # === Track losses for learning curve ===
+    train_losses = []
+    val_losses = []
+    
     best_val_loss = float('inf')
     patience_counter = 0
+    
     for epoch in range(args.epochs):
         model.train()
         train_loss = 0
@@ -119,7 +161,7 @@ def main():
             train_loss += loss.item()
         
         train_loss /= len(train_loader)
-        print(f'Epoch {epoch+1}/{args.epochs}, Train Loss: {train_loss:.4f}')
+        train_losses.append(train_loss)
         
         # Validation
         model.eval()
@@ -143,7 +185,9 @@ def main():
                 val_loss += loss.item()
         
         val_loss /= len(val_loader)
-        print(f'Validation Loss: {val_loss:.4f}')
+        val_losses.append(val_loss)
+        
+        print(f'Epoch {epoch+1}/{args.epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
         
         # Early stopping
         if val_loss < best_val_loss:
@@ -155,6 +199,26 @@ def main():
             if patience_counter >= args.early_stop_patience:
                 print('Early stopping triggered')
                 break
+    
+    # === PLOT AND SAVE LEARNING CURVE ===
+    results_dir = '/kaggle/working/results'  # Kaggle: writable + downloadable
+    # For local: change to './results' or any path
+    os.makedirs(results_dir, exist_ok=True)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_losses, label='Train Loss', marker='o')
+    plt.plot(val_losses, label='Validation Loss', marker='s')
+    plt.title('Learning Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    
+    curve_path = os.path.join(results_dir, 'learning_curve.png')
+    plt.savefig(curve_path)
+    plt.show()
+    print(f"Learning curve saved to: {curve_path}")
 
 if __name__ == '__main__':
     main()
