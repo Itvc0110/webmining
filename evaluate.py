@@ -75,7 +75,11 @@ def main():
             targets_np = targets.float().cpu().numpy() # Collect on CPU
            
             if args.model_type == 'dcnv3':
-                outputs = model(user_ids, item_ids)['y_pred']
+                ser_tensor = torch.full((len(candidates),), user, dtype=torch.long, device=device)
+                item_tensor = torch.tensor(candidates, dtype=torch.long, device=device)
+                sparse = torch.stack([user_tensor, item_tensor, age_bin_tensor, gender_tensor, occ_tensor], dim=1)  # Fill defaults
+                dense = torch.zeros(len(candidates), dataset.dense_dim, device=device)  # Zero genres or average
+                outputs = model(sparse, dense)['y_pred']
             else:
                 outputs = model(user_ids, item_ids)
             preds = outputs.cpu().numpy()
@@ -239,3 +243,4 @@ def main():
     plt.savefig(os.path.join(args.output_dir, 'pred_dist.png'))
 if __name__ == '__main__':
     main()
+
