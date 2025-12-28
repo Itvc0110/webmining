@@ -54,7 +54,7 @@ class MovieLens1MDatasetWithMetadata(MovieLens1MDataset):
         
         # Load users
         users_df = pd.read_csv(users_path, sep='::', engine='python', header=None, 
-                              names=['user_id', 'gender', 'age', 'occupation', 'zip'])
+                              names=['user_id', 'gender', 'age', 'occupation', 'zip'], encoding='latin-1')
         users_df['user_id'] -= 1  # Zero-index
         users_df['age_bin'] = pd.cut(users_df['age'], bins=[0, 18, 25, 35, 45, 50, 56, 100], 
                                     labels=range(7), right=False)
@@ -74,7 +74,7 @@ class MovieLens1MDatasetWithMetadata(MovieLens1MDataset):
         
         # Load movies - robust genre handling
         movies_df = pd.read_csv(movies_path, sep='::', engine='python', header=None, 
-                               names=['movie_id', 'title', 'genres'])
+                               names=['movie_id', 'title', 'genres'], encoding='latin-1')
         movies_df['movie_id'] -= 1
         
         self.genre_list = ['Action', 'Adventure', 'Animation', "Children's", 'Comedy', 
