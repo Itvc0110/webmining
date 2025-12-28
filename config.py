@@ -8,6 +8,8 @@ def get_args():
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'evaluate'], help='Mode: train or evaluate')
     parser.add_argument('--model_type', type=str, default='dcnv3', choices=['dcnv3', 'deepfm', 'mlp'], help='Model architecture')
     parser.add_argument('--dataset_path', type=str, default='ratings.dat', help='Path to MovieLens 1M ratings file')
+    parser.add_argument('--users_path', type=str, default='users.dat', help='Path to users.dat')
+    parser.add_argument('--movies_path', type=str, default='movies.dat', help='Path to movies.dat')
     parser.add_argument('--checkpoint_path', type=str, default='./checkpoints/model.pth', help='Path to save/load model checkpoint')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use (cuda or cpu)')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
@@ -48,6 +50,7 @@ def get_args():
     parser.add_argument('--topk', type=int, default=5, help='K for recall@K and precision@K')
     
     return parser.parse_args()
+
 
 
 
