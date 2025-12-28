@@ -6,7 +6,7 @@ The goal of this project is to train, evaluate, and compare different data minin
 ---
 
 ## Group Information
-- **Group number:** *[Fill here]*
+- **Group number:** 11
 - **Members:**
   - *Nguyen Viet Anh – 20225434*
   - *Hoang Trung Khai – 20225502*
