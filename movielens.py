@@ -48,49 +48,73 @@ class MovieLens1MDataset(MovieLens20MDataset):
     def __init__(self, dataset_path):
         super().__init__(dataset_path, sep='::', engine='python', header=None)
 
-class MovieLens1MDatasetWithMetadata(Dataset):
-    def __init__(self, ratings_path, users_path='users.dat', movies_path='movies.dat'):
-        ratings_df = pd.read_csv(ratings_path, sep='::', engine='python', header=None, names=['user_id', 'movie_id', 'rating', 'timestamp'])
+class MovieLens1MDatasetWithMetadata(MovieLens1MDataset):
+    def __init__(self, dataset_path, users_path='users.dat', movies_path='movies.dat'):
+        super().__init__(dataset_path)
         
-        # Remap IDs
-        self.user_map = {uid: idx for idx, uid in enumerate(ratings_df['user_id'].unique())}
-        self.movie_map = {mid: idx for idx, mid in enumerate(ratings_df['movie_id'].unique())}
-        ratings_df['user_idx'] = ratings_df['user_id'].map(self.user_map)
-        ratings_df['movie_idx'] = ratings_df['movie_id'].map(self.movie_map)
+        # Load users
+        users_df = pd.read_csv(users_path, sep='::', engine='python', header=None, 
+                              names=['user_id', 'gender', 'age', 'occupation', 'zip'])
+        users_df['user_id'] -= 1  # Zero-index
+        users_df['age_bin'] = pd.cut(users_df['age'], bins=[0, 18, 25, 35, 45, 50, 56, 100], 
+                                    labels=range(7), right=False)
         
-        self.user_ids = ratings_df['user_idx'].values.astype(np.int64)
-        self.movie_ids = ratings_df['movie_idx'].values.astype(np.int64)
-        self.targets = (ratings_df['rating'] > 3).astype(np.float32)
+        # Handle NaN in age_bin and gender
+        users_df['age_bin'] = users_df['age_bin'].cat.codes  # -1 for NaN
+        mean_age = users_df['age_bin'][users_df['age_bin'] != -1].mean()
+        fill_age = round(mean_age) if not np.isnan(mean_age) else 0
+        users_df['age_bin'] = users_df['age_bin'].replace(-1, fill_age)
         
-        # Users metadata
-        users_df = pd.read_csv(users_path, sep='::', engine='python', header=None, names=['user_id', 'gender', 'age', 'occupation', 'zip'])
-        users_df['age_bin'] = pd.cut(users_df['age'], bins=[1,18,25,35,45,50,56,100], labels=range(7))
         users_df['gender'] = users_df['gender'].map({'M': 0, 'F': 1}).fillna(0)
-        self.user_meta = {self.user_map[row['user_id']]: (int(row['age_bin']), int(row['gender']), int(row['occupation'])) for _, row in users_df.iterrows() if row['user_id'] in self.user_map}
         
-        # Movies metadata (genres multi-hot)
-        movies_df = pd.read_csv(movies_path, sep='::', engine='python', header=None, names=['movie_id', 'title', 'genres'])
-        self.genre_list = ['Action', 'Adventure', 'Animation', "Children's", 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+        self.user_meta = {
+            row['user_id']: (int(row['age_bin']), int(row['gender']), int(row['occupation']))
+            for _, row in users_df.iterrows()
+        }
+        
+        # Load movies - robust genre handling
+        movies_df = pd.read_csv(movies_path, sep='::', engine='python', header=None, 
+                               names=['movie_id', 'title', 'genres'])
+        movies_df['movie_id'] -= 1
+        
+        self.genre_list = ['Action', 'Adventure', 'Animation', "Children's", 'Comedy', 
+                          'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 
+                          'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 
+                          'Thriller', 'War', 'Western']
+        num_genres = len(self.genre_list)
+        
         self.movie_meta = {}
         for _, row in movies_df.iterrows():
-            if row['movie_id'] in self.movie_map:
-                genres = np.zeros(len(self.genre_list), dtype=np.float32)
-                for g in str(row['genres']).split('|'):
+            movie_id = row['movie_id']
+            genres_str = str(row['genres']).strip()
+            
+            g_vec = np.zeros(num_genres, dtype=np.float32)
+            if genres_str and genres_str.lower() not in ['nan', '(no genres listed)']:
+                for g in genres_str.split('|'):
+                    g = g.strip()
                     if g in self.genre_list:
-                        genres[self.genre_list.index(g)] = 1.0
-                self.movie_meta[self.movie_map[row['movie_id']]] = genres
+                        g_vec[self.genre_list.index(g)] = 1.0
+            # else: remains zero vector (safe default)
+            
+            self.movie_meta[movie_id] = g_vec
         
-        # Field dims (sparse only)
-        self.field_dims = np.array([len(self.user_map), len(self.movie_map), 7, 2, 21], dtype=np.int64)  # user, movie, age_bin, gender, occupation
-        self.dense_dim = len(self.genre_list)  # genres
-
-    def __len__(self):
-        return len(self.targets)
+        # Update field_dims
+        self.field_dims = np.append(self.field_dims, [7, 2, 21, num_genres])
 
     def __getitem__(self, index):
-        u_id = self.user_ids[index]
-        m_id = self.movie_ids[index]
-        user_m = self.user_meta.get(u_id, (0, 0, 0))
-        sparse = torch.tensor([u_id, m_id, user_m[0], user_m[1], user_m[2]], dtype=torch.long)
-        dense = torch.tensor(self.movie_meta.get(m_id, np.zeros(self.dense_dim, dtype=np.float32)), dtype=torch.float32)
+        items, target = super().__getitem__(index)
+        u, i = items
+        
+        # Safe defaults
+        user_m = self.user_meta.get(u, (0, 0, 0))
+        movie_m = self.movie_meta.get(i, np.zeros(len(self.genre_list), dtype=np.float32))
+        
+        return {
+            'user_id': torch.tensor(u, dtype=torch.long),
+            'movie_id': torch.tensor(i, dtype=torch.long),
+            'age_bin': torch.tensor(user_m[0], dtype=torch.long),
+            'gender': torch.tensor(user_m[1], dtype=torch.long),
+            'occupation': torch.tensor(user_m[2], dtype=torch.long),
+            'genres': torch.tensor(movie_m, dtype=torch.float32)
+        }, torch.tensor(target, dtype=torch.float32)
         return sparse, dense, torch.tensor(self.targets[index], dtype=torch.float32)
