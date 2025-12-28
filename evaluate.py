@@ -32,8 +32,8 @@ def main():
     # Initialize model
     if args.model_type == 'dcnv3':
         model = DCNv3(
-            num_users=num_users,
-            num_items=num_items,
+            field_dims=dataset.field_dims,   
+            dense_dim=dataset.dense_dim,     
             embed_dim=args.embed_dim,
             num_deep_cross_layers=args.num_deep_cross_layers,
             num_shallow_cross_layers=args.num_shallow_cross_layers,
@@ -243,5 +243,6 @@ def main():
     plt.savefig(os.path.join(args.output_dir, 'pred_dist.png'))
 if __name__ == '__main__':
     main()
+
 
 
