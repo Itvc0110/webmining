@@ -37,18 +37,21 @@ recommendations = ""
 # Callbacks
 # =====================
 def on_user_change(state: State):
+    state.selected_user = int(state.selected_user)
     state.liked_movies = get_all_watched_movies(dataset, state.selected_user)
-    state.recommendations = state.liked_movies.iloc[0:0]
+    state.recommendations = ""
 
 
 def on_predict(state: State):
+    user_id = int(state.selected_user)
+    
     scores = dcnv3_predict(
         model=model,
         dataset=dataset,
-        user_id=state.selected_user,
+        user_id=user_id,
         top_k=5
     )
-
+    print("Scores:", scores)
     if not scores:
         state.recommendations = "_No recommendation._"
         return
