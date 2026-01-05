@@ -6,26 +6,30 @@
 }
 
 .topbar {
+    margin-left: -5%;
     position: fixed;
     top: 0;
-    width: 100%;
-    background-color: var(--color-background); 
-    color: var(--color-contrast);
-    margin-top: 0px;
-    padding: 12px 0px;
+    width: 110%;
+    height: 80px;
+    background-color: var(--color-background-dark); 
     z-index: 9999;
-    border-bottom: 1px solid var(--color-contrast);
-
-    display: flex;
-    align-items: center;
-    gap: 80px;
 }
 
 .topbar-text {
-    padding: 12px 0px;
+    position: absolute;
+    left: 27.5%;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 36px;
     font-weight: bold;
-    z-index: 10000;
+    white-space: nowrap;
+    
+    background: linear-gradient(90deg, rgb(166, 249, 156), rgb(107, 248, 224)); /* xanh -> hồng */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* optional: làm chữ nổi hơn */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .topbar-selector {
@@ -43,7 +47,7 @@
 }
 
 body {
-    padding-top: 90px;
+    padding-top: 80px;
 }
 
 
@@ -51,80 +55,84 @@ body {
     margin-top: 150px;
 } */
 
-.card {
-    margin: 15px 5px;
-    color: var(--taipy);
-}
-
-.card-title {
-    font-size: 14px;
-    opacity: 0.7;
-}
-
-.card-amount {
-    font-size: 20px;
-    font-weight: bold;
-    margin-top: 4px;
-}
-
-.metric {
-    background-color: var(--color-paper);
-    margin: 5px 5px;
-    padding: var(--element-padding);
-    border-radius: var(--border-radius);
-    color: var(--taipy);
+.predict {
+    margin-top: 15px;                
+    padding: 10px;               
+    background-color: #ffffff;   
+    border-radius: 8px;          
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    vertical-align: top;
     text-align: center;
-    box-shadow: var(--box-shadow);
-    box-sizing: border-box;
+    color: var(--taipy);
+    width: 100%;                
+    height: auto;        /* cho card nở theo nội dung */
 }
 
-.recent-detection {
-    margin: 5px 5px;
-    padding: var(--element-padding);
-    background-color: var(--color-paper);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-}
-
-.score {
-    display: inline-block;
-    width: 50px;
-    height: 30px;
-    text-align: center;
-    border-radius: var(--border-radius);
-    color: #000;
-    font-weight: bold;
-    margin: 2px;
-    margin-left: 0;
-}
-
-.score-low {
-    background-color: var(--color-success)
-}
-.score-mid-low {
-    background-color: var(--color-warning)
-}
-.score-mid-high {
-    background-color: var(--color-warning)
-}
-.score-high {
-    background-color: var(--color-error)
-}
-
-.detector-count {
-    margin: 5px 5px;
-    padding: var(--element-padding);
-    background-color: var(--color-paper);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-}
-
-.item {
-    padding: 8px 0;
-    display: block;
-    width: 100%;
-    border-bottom: 1px solid var(--color-contrast);
+.predict-image {
+    width: 100%;         
+    height: auto;        /* ảnh giữ tỉ lệ tự nhiên */
+    object-fit: contain; /* ảnh không bị cắt */
+    border-radius: 4px;
     margin-bottom: 8px;
+    float: left;
+    border: 2px solid var(--color-background);
+}
+
+.predict-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    margin: 20px;
+    padding: 10px
+}
+
+/* Title & Year */
+.predict-title {
+    font-size: 22px;      
+    font-weight: bold;    
+    margin-bottom: 4px;
+}
+
+.predict-year {
+    font-size: 16px;      
+    color: #555;
+    margin-bottom: 6px;
+}
+
+/* Score model */
+.predict-score {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #f8d7da;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #721c24;
+    margin-bottom: 4px;
+}
+
+/* TMDB Rating */
+.predict-vote {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #d1ecf1;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #0c5460;
+    margin-bottom: 6px;
+}
+
+/* Overview text */
+.predict-overview {
+    margin: 2px;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.4;
+}
+
+.selector-box {
+    margin-top: 40px;
 }
 
 .text-right {
