@@ -95,7 +95,6 @@ def on_predict(state: State):
             "user_score": user_score
         })
 
-    print(recs)
     for r in recs:
         print(r["title"])
 
@@ -159,6 +158,6 @@ with Page() as page:
 # =====================
 Gui(page, css_file=r"assets\style.css").run(
     title="MoviRecommendation Demo",
-    port=5001,
+    port=5000,
     dark_mode=False
 )
