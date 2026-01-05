@@ -14,7 +14,7 @@ from src.fetch_movie_info import fetch_movie_info
 # Init
 # =====================
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_PREDICT = 2
+NUM_PREDICT = 5
 
 dataset = load_dataset()
 model, device = load_model_dcnv3(
@@ -31,7 +31,7 @@ user_ids = sorted(np.unique(dataset.user_ids).tolist())
 # =====================
 # UI State initial values
 # =====================
-selected_user = user_ids[40]
+selected_user = user_ids[54]
 liked_movies = get_all_watched_movies(dataset, selected_user)
 recommendations = []
 
@@ -69,7 +69,8 @@ def on_predict(state: State):
         user_id=user_id,
         top_k=NUM_PREDICT
     )
-
+    notify(state, "success", "Prediction done! Searching for additional movie info...")
+    
     if not scores:
         state.recommendations = []
         notify(state, "warning", "No recommendation.")
@@ -80,10 +81,10 @@ def on_predict(state: State):
         raw_title = dataset.movie_titles.get(int(mid), "Unknown")
         title, year = split_title_year(raw_title)
 
-        movie_info = fetch_movie_info(title, year)  # dict với poster, overview, vote
+        movie_info = fetch_movie_info(title, year)
         poster_url = movie_info["poster_url"]
         overview = movie_info["overview"]
-        user_score = movie_info["user_score"]
+        user_score = round(movie_info["user_score"], 2)
 
         recs.append({
             "title": title,
@@ -99,7 +100,8 @@ def on_predict(state: State):
         print(r["title"])
 
     state.recommendations = recs
-    notify(state, "success", "Prediction done!")
+    
+    notify(state, "success", "All movie info fetched!")
 
 
 
@@ -127,10 +129,10 @@ with Page() as page:
             pass
         
         with part():
-            text("### Movies user watched", mode="md")
-            table("{liked_movies}", height="260px")
-
-            button("Recommend Movies", on_action=on_predict)
+            text("### Movies Watching History", mode="md")
+            table("{liked_movies}", height="300px")
+            with part(class_name="recommend-btn-wrapper"):
+                button("Recommend Movies", on_action=on_predict, class_name="recommend-btn")
 
             # Chỉ render khi recommendations có dữ liệu
             with part(render="{recommendations and len(recommendations) > 0}"):

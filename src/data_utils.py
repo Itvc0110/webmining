@@ -18,15 +18,20 @@ def load_dataset(
 def get_all_watched_movies(dataset, user_idx):
     user_idx = int(user_idx)
     mask = dataset.user_ids == user_idx
-    movie_idxs = np.unique(dataset.movie_ids[mask])
+    movie_idxs = dataset.movie_ids[mask]
+    ratings = dataset.ratings[mask]
+
     print(f"User {user_idx} has watched {len(movie_idxs)} movies.")
-    return pd.DataFrame([
-        {
+    
+    rows = []
+    for mid, r in zip(movie_idxs, ratings):
+        rows.append({
             "Movie ID": int(mid),
-            "Title": dataset.movie_titles.get(int(mid), "Unknown")
-        }
-        for mid in movie_idxs
-    ])
+            "Title": dataset.movie_titles.get(int(mid), "Unknown"),
+            "Rating": float(r)
+        })
+        
+    return pd.DataFrame(rows)
 
 def get_top_n_movies(dataset, user_idx, n=5):
     user_idx = int(user_idx)
