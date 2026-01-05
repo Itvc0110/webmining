@@ -19,7 +19,7 @@ def fetch_movie_info(title: str, year: int = None) -> dict:
         params["year"] = year
 
     try:
-        resp = requests.get(TMDB_API_URL, params=params)
+        resp = requests.get(TMDB_API_URL, params=params, timeout=5)
         resp.raise_for_status()
         data = resp.json()
         results = data.get("results", [])
@@ -27,7 +27,7 @@ def fetch_movie_info(title: str, year: int = None) -> dict:
             movie = results[0]
             poster_path = movie.get("poster_path")
             poster_url = TMDB_IMAGE_BASE + poster_path if poster_path else "https://via.placeholder.com/200x300?text=No+Image"
-            overview = movie.get("overview", "No overview available")
+            overview = movie.get("overview", "No internet, Overview is not available!")
             user_score = movie.get("vote_average", 0.0)  # điểm từ 0 -> 10
             return {
                 "poster_url": poster_url,
