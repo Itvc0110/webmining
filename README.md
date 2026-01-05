@@ -65,6 +65,32 @@ Arguments:
 - --output_dir: Directory to save evaluation results
 - --topk: Top-K recommendation setting
 
+## Running the User Interface (UI)
+
+To launch the interactive **Movie Recommendation UI**, run:
+
+```bash
+python -m src.ui
+```
+
+#### Notes
+
+Make sure all required datasets (ratings, users, movies) are correctly set.
+
+```
+data_source/
+└── ml-1m/
+    ├── movies.dat
+    ├── ratings.dat
+    └── users.dat
+
+src/checkpoints/
+└── dcnv3.pth           # Trained model checkpoint
+```
+The UI runs on a local server, usually at http://localhost:5000.
+
+If you make changes to the code, you may need to restart the UI to see updates.
+
 ## Documentation
 All documentation and experiment-related materials that are **not directly involved in code execution** are organized in the `docs/` directory.
 
